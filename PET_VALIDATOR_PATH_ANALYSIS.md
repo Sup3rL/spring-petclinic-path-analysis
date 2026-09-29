@@ -80,6 +80,81 @@ The graph deliberately has no edge from node 8 to node 10: when
 `pet.isNew()` is false, Java short-circuits `pet.getType() == null` and the
 right operand is not evaluated.
 
+### Mermaid CFG
+
+The following diagram uses the same node numbers as the table above. `Yes` and
+`No` labels are predicate outcomes; the edge from node 7 to node 8 is the
+short-circuit path that avoids evaluating node 9.
+
+```mermaid
+flowchart TD
+    N1([1 Entry: cast obj; read name]) --> N2{2 P1: !hasText(name)?}
+    N2 -- Yes --> N3[3 Reject name required]
+    N2 -- No --> N4{4 P2: name.length() > 30?}
+    N3 --> N7{7 P3: pet.isNew()?}
+    N4 -- Yes --> N5[5 Reject name size]
+    N4 -- No --> N6[6 Name validation complete]
+    N5 --> N6
+    N6 --> N7
+    N7 -- No / short-circuit --> N8[8 Skip P4]
+    N7 -- Yes --> N9{9 P4: pet.getType() == null?}
+    N8 --> N13{13 P5: birthDate == null?}
+    N9 -- Yes --> N10[10 Missing type]
+    N9 -- No --> N12[12 Type present]
+    N10 --> N11[11 Reject type required]
+    N11 --> N13
+    N12 --> N13
+    N13 -- Yes --> N14[14 Reject birthDate required]
+    N13 -- No --> N15([15 Exit])
+    N14 --> N15
+```
+
+### TriClass-style numbered layout
+
+The same CFG can be read top-to-bottom as a numbered layout. This makes the
+branch and short-circuit behavior explicit even in a renderer that does not
+display Mermaid diagrams:
+
+```text
+ [1] Entry
+   |
+   v
+ [2] P1: !hasText(name)?
+   | Yes                         | No
+   v                             v
+ [3] Reject name required      [4] P2: name.length() > 30?
+   |                             | Yes              | No
+   |                             v                  v
+   |                          [5] Reject size     [6] Name complete
+   |                             |                  |
+   +-----------------------------+------------------+
+                                 v
+                         [7] P3: pet.isNew()?
+                          | No (short-circuit)     | Yes
+                          v                        v
+                    [8] Skip P4             [9] P4: type == null?
+                          |                  | Yes             | No
+                          |                  v                 v
+                          |             [10] Missing type  [12] Type present
+                          |                  |                 |
+                          |                  v                 |
+                          |             [11] Reject type       |
+                          |                  |                 |
+                          +------------------+-----------------+
+                                             v
+                                  [13] P5: birthDate == null?
+                                    | Yes                 | No
+                                    v                     v
+                         [14] Reject birthDate       [15] Exit
+                                    |
+                                    v
+                               [15] Exit
+```
+
+In particular, `7 -- No` means that `pet.getType() == null` is not evaluated;
+it is not a false outcome for P4. A P4 outcome exists only on the `7 -- Yes`
+edge.
+
 ## Predicate outcomes and coverage
 
 | Predicate | True outcome | False outcome | Observable effect |
